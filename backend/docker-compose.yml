@@ -1,0 +1,27 @@
+# docker-compose.yml
+version: '3.8' # Specify the Docker Compose file format version
+
+services:
+  # Define your application service
+  app:
+    # Build the image using the Dockerfile in the current directory
+    build:
+      context: .
+      dockerfile: Dockerfile # Assumes your Dockerfile is named 'Dockerfile' in the root
+
+    # Map ports from the container to the host
+    # Format: "HOST_PORT:CONTAINER_PORT"
+    # The CONTAINER_PORT should match the EXPOSE port in your Dockerfile (e.g., 3000)
+    ports:
+      - "9952:9952"
+
+    # Optional: Define environment variables for your application
+    # environment:
+    #   NODE_ENV: development
+    #   API_URL: http://localhost:8080
+
+    # Optional: Restart policy (e.g., always restart if it crashes)
+    restart: "on-failure"
+
+    # Optional: Command to override the CMD in Dockerfile if needed
+    # command: pnpm run dev

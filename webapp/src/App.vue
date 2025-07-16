@@ -4,11 +4,13 @@ import { WebSocketHandler } from './modules/WebSocketHandler';
 import type { Log, SocketMessage } from './types';
 import LogCard from './components/LogCard.vue';
 
-const apiHost = 'http://localhost:9952';
-const webSocketHost = 'ws://localhost:9952';
+const loggingServer = import.meta.env.VITE_LOGGING_SERVER
+const apiHost = `http://${loggingServer}`;
+const webSocketHost = `ws://${loggingServer}`;
 
 const logs = ref<Log[]>([]);
 const search = ref('');
+const expandedPanels = ref<number[]>([]);
 
 const filteredRecords = computed(() => {
   if (!search.value) {
@@ -23,6 +25,7 @@ const reloadData = async () => {
     const response = await fetch(apiHost);
     if (response.ok) {
       logs.value = await response.json();
+      expandedPanels.value = logs.value.map((_,index)=> index);
     } else {
       console.error('Failed to fetch logs:', response.statusText);
     }
@@ -40,9 +43,12 @@ const ws = ref(new WebSocketHandler<SocketMessage>({
           timestamp: message.timestamp,
           data: message.data
         });
+        const newExpandedPanels = [0,...expandedPanels.value.map(i => i + 1)];
+        expandedPanels.value = newExpandedPanels;
         break;
       case 'cleared':
         logs.value = [];
+        expandedPanels.value = [];
         break;
     }
   },
@@ -61,9 +67,11 @@ const clearSearch = () => {
 
 const clearAllRecords = async () => {
   await fetch(apiHost + '/clear', { method: 'POST' });
-  logs.value = [];
 }
 
+const collapseAll = () => {
+  expandedPanels.value = [];
+}
 
 </script>
 <template>
@@ -78,13 +86,14 @@ const clearAllRecords = async () => {
       </VCol>
     </VRow>
     <VRow>
-      <VCol>
+      <VCol class="d-flex align-center ga-4">
+        <VBtn color="blue" @click="collapseAll">Collapse All</VBtn>
         <VBtn color="red" @click="clearAllRecords">Remove All Records</VBtn>
       </VCol>
     </VRow>
     <VRow>
       <VCol>
-        <VExpansionPanels multiple>
+        <VExpansionPanels multiple v-model="expandedPanels">
           <LogCard :log="log" v-for="log in filteredRecords"></LogCard>
         </VExpansionPanels>
       </VCol>

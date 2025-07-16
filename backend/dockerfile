@@ -1,0 +1,61 @@
+# --- Stage 1: Builder ---
+# Use a Node.js base image for building
+FROM node:24-alpine AS builder
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy package.json and npm-lock.yaml/json first
+# This allows Docker to cache the npm install step if only these files change
+COPY package.json ./
+
+# Install dependencies using npm
+# The --frozen-lockfile flag ensures that the exact versions from the lockfile are used
+RUN npm install --frozen-lockfile
+
+# Copy the rest of your application code
+COPY . .
+
+# If your application requires a build step (e.g., a frontend framework like Vue, React, Angular)
+# uncomment and adjust the following line:
+# RUN npm run build
+
+# --- Stage 2: Runner (Production) ---
+# Use a smaller, production-ready Node.js base image
+# Alpine is often preferred for its small size
+
+RUN npm run build
+
+FROM node:24-alpine AS runner
+
+# Set the working directory
+WORKDIR /app
+
+# Copy only the necessary files from the builder stage
+# This includes node_modules and your application code (or build output if a build step was used)
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+# If you had a build step, copy the build output instead of the raw source
+# Example for a 'dist' folder:
+# COPY --from=builder /app/dist ./dist
+# COPY --from=builder /app/src ./src # If you need source files for runtime
+
+# If your application is a simple script or server that runs directly from source:
+COPY --from=builder /app/dist ./dist
+# Or if your main entry file is in the root:
+# COPY --from=builder /app/index.js ./index.js
+# COPY --from=builder /app/server.js ./server.js
+
+# Expose the port your application listens on
+# Replace 3000 with your application's actual port
+EXPOSE 9952
+
+# Define the command to run your application
+# Adjust 'src/index.js' to your application's entry point
+# If you have a 'start' script in package.json:
+CMD ["npm", "start"]
+# Or if you run a specific file directly:
+# CMD ["node", "src/index.js"]
+# If you built your app to a 'dist' folder:
+# CMD ["node", "dist/index.js"]
