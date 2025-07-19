@@ -7,8 +7,8 @@ export type WebSocketSettings<SocketMessageData> = {
   handleMessage: (data: SocketMessageData) => void;
   onConnect?: () => void;
   pingIntervalMs?: number;
-  onError?: (err: any) => void;
-}
+  onError?: (err: unknown) => void;
+};
 
 export class WebSocketHandler<SocketMessageData> {
   settings: WebSocketSettings<SocketMessageData>;
@@ -19,7 +19,7 @@ export class WebSocketHandler<SocketMessageData> {
   }
 
   get host() {
-    return this.settings.host
+    return this.settings.host;
   }
 
   get autoReconnect() {
@@ -27,14 +27,14 @@ export class WebSocketHandler<SocketMessageData> {
   }
 
   get reconnectInterval() {
-    return this.settings.reconnectIntervalMs || 1000
+    return this.settings.reconnectIntervalMs || 1000;
   }
 
   get pingInterval() {
-    return this.settings.pingIntervalMs || 60000
+    return this.settings.pingIntervalMs || 60000;
   }
 
-  sendMessage(message: any) {
+  sendMessage(message: object) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       return false;
     }
@@ -46,39 +46,38 @@ export class WebSocketHandler<SocketMessageData> {
     if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
       return;
     }
-    console.log('trying connecting web socket on ', this.host);
-    const self = this;
+    console.log("trying connecting web socket on ", this.host);
     const socket = new WebSocket(this.host);
     socket.onopen = () => {
-      self.socket = socket;
-      console.log('Websocket connection opened');
+      this.socket = socket;
+      console.log("Websocket connection opened");
       const pingIntervalTimeout = setInterval(() => {
-        self.sendMessage({ type: 'ping' });
-      }, self.pingInterval)
+        this.sendMessage({ type: "ping" });
+      }, this.pingInterval);
 
-      self.settings.onConnect?.();
+      this.settings.onConnect?.();
 
       socket.onclose = async () => {
         clearInterval(pingIntervalTimeout);
-        console.log('Websocket connection closed');
-        if (!self.autoReconnect) return;
-        while (self.socket?.readyState === WebSocket.CLOSED) {
+        console.log("Websocket connection closed");
+        if (!this.autoReconnect) return;
+        while (this.socket?.readyState === WebSocket.CLOSED) {
           await wait(1000);
-          self.connect();
+          this.connect();
         }
-      }
+      };
       socket.onmessage = ({ data }) => {
         try {
           const jsonData = JSON.parse(data);
           this.settings.handleMessage(jsonData);
         } catch (err) {
-          console.error('Failed to parse message data', err);
+          console.error("Failed to parse message data", err);
         }
-      }
+      };
       socket.onerror = (error) => {
-        console.error('Websocket error:', error);
-        self.settings.onError?.(error);
-      }
-    }
+        console.error("Websocket error:", error);
+        this.settings.onError?.(error);
+      };
+    };
   }
 }

@@ -1,13 +1,12 @@
-
-type MessageType = 'newLog' | 'cleared';
+export type MessageType = "newLog" | "cleared";
 
 export type SocketMessage = {
   timestamp: string;
   type: MessageType;
-  data: any;
-}
+  data: object;
+};
 
 export type Log = {
   timestamp: string;
-  data: any;
-}
+  data: object;
+};
