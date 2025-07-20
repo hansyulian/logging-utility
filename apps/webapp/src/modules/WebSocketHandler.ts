@@ -1,4 +1,4 @@
-import { wait } from "../utils/wait";
+import { wait } from "@apps/common";
 
 export type WebSocketSettings<SocketMessageData> = {
   host: string;

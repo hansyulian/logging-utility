@@ -2,34 +2,47 @@
 import { ref, onMounted, computed } from "vue";
 import { WebSocketHandler } from "./modules/WebSocketHandler";
 import LogCard from "./components/LogCard.vue";
-import type { Log, SocketMessage } from "@apps/common";
+import type { SocketMessage } from "@apps/common";
+import type { LogExtended } from "./types";
+import { convertLogExtened } from "./utils/convertLogExtended";
 
 const loggingServer = import.meta.env.VITE_LOGGING_SERVER;
 const apiHost = `http://${loggingServer}`;
 const webSocketHost = `ws://${loggingServer}`;
 
-const logs = ref<Log[]>([]);
+const logs = ref<LogExtended[]>([]);
 const search = ref("");
-const expandedPanels = ref<number[]>([]);
+const showHidden = ref(false);
+const allCollapseExpandState = ref(false);
 
 const filteredRecords = computed(() => {
+  const visibleLogs = showHidden.value
+    ? logs.value
+    : logs.value.filter((log) => !log.hidden);
   if (!search.value) {
-    return logs.value;
+    return visibleLogs;
   }
   const searchLowerCase = search.value.toLowerCase();
-  return logs.value.filter(
-    (log) =>
-      JSON.stringify(log.data).toLowerCase().includes(searchLowerCase) ||
-      log.timestamp.toLowerCase().includes(searchLowerCase)
-  );
+  return searchLowerCase
+    ? visibleLogs.filter(
+        (log) =>
+          log.id === searchLowerCase ||
+          JSON.stringify(log.data).toLowerCase().includes(searchLowerCase) ||
+          log.timestamp.toLowerCase().includes(searchLowerCase)
+      )
+    : visibleLogs;
+});
+
+const pinnedRecords = computed(() => {
+  return logs.value.filter((log) => log.pinned);
 });
 
 const reloadData = async () => {
   try {
     const response = await fetch(apiHost);
     if (response.ok) {
-      logs.value = await response.json();
-      expandedPanels.value = logs.value.map((_, index) => index);
+      const data = await response.json();
+      logs.value = data.map(convertLogExtened);
     } else {
       console.error("Failed to fetch logs:", response.statusText);
     }
@@ -44,19 +57,10 @@ const ws = ref(
     handleMessage: (message) => {
       switch (message.type) {
         case "newLog":
-          logs.value.unshift({
-            timestamp: message.timestamp,
-            data: message.data,
-          });
-          const newExpandedPanels = [
-            0,
-            ...expandedPanels.value.map((i) => i + 1),
-          ];
-          expandedPanels.value = newExpandedPanels;
+          logs.value.unshift(convertLogExtened(message));
           break;
         case "cleared":
           logs.value = [];
-          expandedPanels.value = [];
           break;
       }
     },
@@ -70,45 +74,77 @@ onMounted(async () => {
   ws.value.connect();
 });
 
-const clearSearch = () => {};
-
 const clearAllRecords = async () => {
   await fetch(apiHost + "/clear", { method: "POST" });
 };
 
 const collapseAll = () => {
-  expandedPanels.value = [];
+  logs.value.forEach((log) => {
+    log.expanded = false;
+  });
+};
+
+const expandAll = () => {
+  logs.value.forEach((log) => {
+    log.expanded = true;
+  });
+};
+
+const toggleShowHidden = () => {
+  showHidden.value = !showHidden.value;
+};
+
+const toggleCollapseExpandAll = () => {
+  allCollapseExpandState.value = !allCollapseExpandState.value;
+  if (allCollapseExpandState.value) {
+    collapseAll();
+  } else {
+    expandAll();
+  }
 };
 </script>
 <template>
   <VContainer>
     <VRow>
-      <VCol cols="10">
+      <VCol>
         <VTextField
           v-model="search"
-          label="Search"
           variant="solo"
           append-inner-icon="mdi-magnify"
           density="compact"
           single-line
           hide-details
+          clearable
+          placeholder="Search by ID, timestamp, or data"
         />
       </VCol>
-      <VCol cols="2" class="d-flex align-center">
-        <VBtn @click="clearSearch" color="info" width="100%">Clear</VBtn>
+    </VRow>
+    <VRow>
+      <VCol class="d-flex align-center ga-4 justify-space-between">
+        <div class="d-flex align-center ga-4">
+          <VBtn
+            @click="toggleCollapseExpandAll"
+            :icon="
+              allCollapseExpandState ? 'mdi-arrow-expand' : 'mdi-arrow-collapse'
+            "
+          />
+          <VBtn
+            color="gray"
+            @click="toggleShowHidden"
+            :icon="showHidden ? 'mdi-eye-off' : 'mdi-eye'"
+          />
+        </div>
+        <div>
+          <VBtn color="red" @click="clearAllRecords" icon="mdi-delete" />
+        </div>
       </VCol>
     </VRow>
     <VRow>
-      <VCol class="d-flex align-center ga-4">
-        <VBtn color="blue" @click="collapseAll">Collapse All</VBtn>
-        <VBtn color="red" @click="clearAllRecords">Remove All Records</VBtn>
+      <VCol class="d-flex flex-column ga-4" cols="6">
+        <LogCard :log="log" v-for="log in filteredRecords"></LogCard>
       </VCol>
-    </VRow>
-    <VRow>
-      <VCol>
-        <VExpansionPanels multiple v-model="expandedPanels">
-          <LogCard :log="log" v-for="log in filteredRecords"></LogCard>
-        </VExpansionPanels>
+      <VCol class="d-flex flex-column ga-4" cols="6">
+        <LogCard :log="log" v-for="log in pinnedRecords"></LogCard>
       </VCol>
     </VRow>
   </VContainer>

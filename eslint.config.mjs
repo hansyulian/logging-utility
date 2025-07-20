@@ -9,6 +9,8 @@ export default tsEslint.config(
     ignores: [
       "node_modules",
       "!.*",
+      "**/*.js",
+      "eslint.config.mjs",
       "**/dist",
       "**/build",
       "apps/nextjs/.next",
@@ -34,6 +36,5 @@ export default tsEslint.config(
       },
     },
   },
-
-  eslintPluginPrettierRecommended,
+  eslintPluginPrettierRecommended
 );

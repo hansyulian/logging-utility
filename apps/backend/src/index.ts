@@ -3,8 +3,7 @@ import cors from "cors";
 import dayjs from "dayjs";
 import http from "http";
 import { WebSocketServer } from "ws";
-import { wait } from "./utils/wait";
-import { Log } from "@apps/common";
+import { Log, wait } from "@apps/common";
 
 const app = express();
 let logs: Log[] = [];
