@@ -2,7 +2,6 @@
 import type { LogExtended } from "../types";
 
 const props = defineProps<{ log: LogExtended }>();
-const emit = defineEmits<{}>();
 
 const copyToClipboard = () => {
   navigator.clipboard.writeText(props.log.id);

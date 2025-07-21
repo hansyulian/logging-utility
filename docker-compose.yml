@@ -1,9 +1,9 @@
 # docker-compose.yml
-version: '3.8' # Specify the Docker Compose file format version
+version: "3.8" # Specify the Docker Compose file format version
 
 services:
   # Define your application service
-  app:
+  backend:
     # Build the image using the Dockerfile in the current directory
     build:
       context: .
