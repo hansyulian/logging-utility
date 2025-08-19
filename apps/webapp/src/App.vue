@@ -5,10 +5,10 @@ import LogCard from "./components/LogCard.vue";
 import type { SocketMessage } from "@apps/common";
 import type { LogExtended } from "./types";
 import { convertLogExtened } from "./utils/convertLogExtended";
+import { appConfig } from "./config/appConfig";
 
-const loggingServer = import.meta.env.VITE_LOGGING_SERVER;
-const apiHost = `http://${loggingServer}`;
-const webSocketHost = `ws://${loggingServer}`;
+const apiHost = `http://${appConfig.loggingServer}`;
+const webSocketHost = `ws://${appConfig.loggingServer}`;
 
 const logs = ref<LogExtended[]>([]);
 const search = ref("");
@@ -43,7 +43,11 @@ const hasPinnedRecords = computed(() => {
 
 const reloadData = async () => {
   try {
-    const response = await fetch(apiHost);
+    const response = await fetch(apiHost, {
+      headers: {
+        "server-key": appConfig.serverKey,
+      },
+    });
     if (response.ok) {
       const data = await response.json();
       logs.value = data.map(convertLogExtened);

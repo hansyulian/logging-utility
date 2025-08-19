@@ -1,4 +1,5 @@
 const endpoint = "http://192.168.0.1:9952/";
+const serverKey = "someserverkey";
 
 export async function hansLog(...parameters: unknown[]): Promise<void> {
   try {

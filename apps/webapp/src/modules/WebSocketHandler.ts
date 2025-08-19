@@ -1,4 +1,5 @@
 import { wait } from "@apps/common";
+import { appConfig } from "../config/appConfig";
 
 export type WebSocketSettings<SocketMessageData> = {
   host: string;
@@ -51,6 +52,7 @@ export class WebSocketHandler<SocketMessageData> {
     socket.onopen = () => {
       this.socket = socket;
       console.log("Websocket connection opened");
+      this.socket.send(appConfig.serverKey);
       const pingIntervalTimeout = setInterval(() => {
         this.sendMessage({ type: "ping" });
       }, this.pingInterval);

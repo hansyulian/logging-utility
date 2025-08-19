@@ -1,9 +1,10 @@
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import dayjs from "dayjs";
 import http from "http";
 import { WebSocketServer } from "ws";
 import { Log, wait } from "@apps/common";
+import { appConfig } from "./config/app";
 
 const app = express();
 let logs: Log[] = [];
@@ -14,10 +15,15 @@ app.use(cors());
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
+const wsState = new WeakMap();
+
 wss.on("connection", (ws) => {
   console.log(`Client connected, total clients ${wss.clients.size}`);
 
   ws.on("message", (message) => {
+    if (verifyServerKey(message.toString())) {
+      wsState.set(ws, { isAuthenticated: true });
+    }
     console.log("Received message:", message.toString());
   });
   ws.on("close", () => {
@@ -37,10 +43,14 @@ function broadcastMessage(type: MessageType, data: object) {
     timestamp: dayjs().format("YYYY-MM-DD HH:mm:ss"),
   });
   wss.clients.forEach((client) => {
-    if (client.readyState === 1) {
-      // 1 = OPEN
-      client.send(message);
+    if (client.readyState !== 1) {
+      return;
     }
+    if (!wsState.get(client)?.isAuthenticated) {
+      return;
+    }
+
+    client.send(message);
   });
 }
 
@@ -51,6 +61,25 @@ function broadcastClear() {
 function broadcastLog(data: object) {
   broadcastMessage("newLog", data);
 }
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const queryServerKey = req.query.serverKey;
+  const bodyServerKey = req.body?.serverKey;
+  const headerServerKey = req.headers["server-key"];
+  const serverKey = queryServerKey || bodyServerKey || headerServerKey;
+  if (req.body) {
+    delete req.body.serverKey;
+  }
+  if (!serverKey) {
+    res.status(404).send();
+    return;
+  }
+  if (!verifyServerKey(serverKey)) {
+    res.status(404).send();
+    return;
+  }
+  next();
+});
 
 app.post("/", (req: Request, res: Response) => {
   const data = req.body;
@@ -84,6 +113,10 @@ app.get("/", (req: Request, res: Response) => {
 server.listen(9952, () => {
   console.log("Server started on port 9952 with WebSocket support");
 });
+
+function verifyServerKey(serverKey: string) {
+  return serverKey === appConfig.serverKey;
+}
 
 async function logClearCron() {
   const untilMidnight = dayjs()
