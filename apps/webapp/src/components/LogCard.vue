@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { computed, onMounted } from "vue";
 import type { LogExtended } from "../types";
 
 const props = defineProps<{ log: LogExtended }>();
@@ -6,6 +7,19 @@ const props = defineProps<{ log: LogExtended }>();
 const copyToClipboard = () => {
   navigator.clipboard.writeText(props.log.id);
 };
+
+onMounted(() => {
+  console.log(props.log.data);
+});
+
+const preview = computed(() => {
+  const data = props.log.data;
+  if (!Array.isArray(data)) {
+    return;
+  }
+  const firstData = data[0];
+  return `${firstData}`;
+});
 </script>
 
 <template>
@@ -50,8 +64,11 @@ const copyToClipboard = () => {
       </div>
     </VCardText>
 
+    <VCardText v-show="!log.expanded">
+      <pre>{{ preview }}</pre>
+    </VCardText>
     <VCardText v-show="log.expanded">
-      <pre>{{ JSON.stringify(log.data, null, 2) }}</pre>
+      <JsonViewer :value="log.data" copyable />
     </VCardText>
   </VCard>
 </template>

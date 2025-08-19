@@ -37,6 +37,10 @@ const pinnedRecords = computed(() => {
   return logs.value.filter((log) => log.pinned);
 });
 
+const hasPinnedRecords = computed(() => {
+  return !!pinnedRecords.value.length;
+});
+
 const reloadData = async () => {
   try {
     const response = await fetch(apiHost);
@@ -140,10 +144,10 @@ const toggleCollapseExpandAll = () => {
       </VCol>
     </VRow>
     <VRow>
-      <VCol class="d-flex flex-column ga-4" cols="6">
+      <VCol class="d-flex flex-column ga-4" :cols="hasPinnedRecords ? 6 : 12">
         <LogCard :log="log" v-for="log in filteredRecords"></LogCard>
       </VCol>
-      <VCol class="d-flex flex-column ga-4" cols="6">
+      <VCol class="d-flex flex-column ga-4" cols="6" v-if="hasPinnedRecords">
         <LogCard :log="log" v-for="log in pinnedRecords"></LogCard>
       </VCol>
     </VRow>
